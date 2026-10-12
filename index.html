@@ -12,7 +12,7 @@ html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;height:100%;background:var(--bg);color:#e8f0ff;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;overflow:hidden;user-select:none}
 canvas{width:min(100vw,calc((100svh - 50px) * .75));aspect-ratio:3/4;background:#000;border:2px solid var(--line);
-  border-radius:6px;display:block;touch-action:none;image-rendering:pixelated}
+  border-radius:6px;display:block;touch-action:none;image-rendering:pixelated;cursor:pointer}
 p{margin:0;font-size:13px;color:var(--dim);text-align:center}
 </style>
 </head>
@@ -27,7 +27,7 @@ var F="'Malgun Gothic','Apple SD Gothic Neo',monospace";
 var SHIP=["....X....","....X....","...XXX...","X..XXX..X","X.XXXXX.X","XXXXXXXXX","XXX.X.XXX","X...X...X"];
 var BUG=["..X....X..","...X..X...","..XXXXXX..",".XX.XX.XX.","XXXXXXXXXX","X.XXXXXX.X","X.X....X.X","...XX.XX.."];
 var COL=['#b07bff','#ff5a6e','#ff5a6e','#ffd23f'],PTS=[150,80,80,50];
-var over=false,score=0,hi=0,lives=3,stage=1,ens=[],pb=[],eb=[],parts=[],px=W/2,inv=0,cd=0,fr=0,wait=0,diveT=100,auto=false;
+var started=false,over=false,score=0,hi=0,lives=3,stage=1,ens=[],pb=[],eb=[],parts=[],px=W/2,inv=0,cd=0,fr=0,wait=0,diveT=100,auto=false;
 var keys={l:false,r:false,f:false};
 try{hi=+localStorage.getItem('gal_hi')||0}catch(e){}
 var stars=[];for(var i=0;i<70;i++)stars.push({x:Math.random()*W,y:Math.random()*H,s:.4+Math.random()*1.8});
@@ -49,6 +49,7 @@ function shoot(e){var a=Math.atan2(H-60-e.y,px-e.x),v=3.2+stage*.08;eb.push({x:e
 function update(){
   fr++;
   stars.forEach(function(s){s.y+=s.s;if(s.y>H){s.y=0;s.x=Math.random()*W}});
+  if(!started)return;
   for(var i=parts.length-1;i>=0;i--){var p=parts[i];p.x+=p.vx;p.y+=p.vy;if(--p.l<=0)parts.splice(i,1)}
   if(over)return;
   if(keys.l)px-=5;if(keys.r)px+=5;px=Math.max(20,Math.min(W-20,px));
@@ -93,6 +94,25 @@ function update(){
 function draw(){
   c.fillStyle='#04050d';c.fillRect(0,0,W,H);
   stars.forEach(function(s){c.fillStyle=s.s>1.4?'#cfe4ff':'#5a6aa8';c.fillRect(s.x,s.y,s.s>1.4?2:1,s.s>1.4?2:1)});
+  
+  if(!started){
+    txt('꿀잼 슈팅게임',W/2,220,38,'#5fd4ff');
+    txt('BEST SCORE: '+hi,W/2,270,18,'#ffd23f');
+    
+    // 시작 버튼 그래픽
+    c.fillStyle='#ff5a6e';
+    c.fillRect(W/2-100,340,200,56);
+    c.fillStyle='#ffffff';
+    c.fillRect(W/2-96,344,192,48);
+    c.fillStyle='#ff5a6e';
+    c.fillRect(W/2-92,348,184,40);
+    
+    txt('GAME START',W/2,374,22,'#ffffff');
+    txt('클릭하거나 스페이스바를 누르세요',W/2,430,15,'#8c97c4');
+    spr(SHIP,W/2,140,5,'#5fd4ff');
+    return;
+  }
+
   ens.forEach(function(e){
     if(e.t==='enter'&&e.delay>0)return;
     spr(BUG,e.x,e.y+(Math.floor(fr/20)%2?0:1),3,e.hit?'#fff':COL[e.row]);
@@ -118,18 +138,37 @@ function loop(){
   var now=Date.now();acc+=Math.min(100,now-last);last=now;
   while(acc>=16.67){update();acc-=16.67}
   draw();requestAnimationFrame(loop)}
-reset();loop();
+loop();
 
+function startGame(){
+  if(!started){
+    started=true;
+    reset();
+  }
+}
 function restart(){if(over)reset()}
 function key(e,v){var k=e.key;
   if(k==='ArrowLeft'||k==='a'||k==='A')keys.l=v;
   else if(k==='ArrowRight'||k==='d'||k==='D')keys.r=v;
-  else if(k===' '||k==='Spacebar'){keys.f=v;if(v)restart()}
+  else if(k===' '||k==='Spacebar'){
+    keys.f=v;
+    if(v){
+      if(!started) startGame();
+      else restart();
+    }
+  }
   if(k.indexOf('Arrow')===0||k===' ')e.preventDefault()}
 window.addEventListener('keydown',function(e){key(e,true)});
 window.addEventListener('keyup',function(e){key(e,false)});
 function move(e){var r=cv.getBoundingClientRect();px=Math.max(20,Math.min(W-20,(e.clientX-r.left)/r.width*W))}
-cv.addEventListener('pointerdown',function(e){window.focus();auto=true;restart();move(e)});
+cv.addEventListener('pointerdown',function(e){
+  window.focus();
+  if(!started){
+    startGame();
+    return;
+  }
+  auto=true;restart();move(e);
+});
 cv.addEventListener('pointermove',function(e){if(auto)move(e)});
 window.addEventListener('pointerup',function(){auto=false});
 })();
